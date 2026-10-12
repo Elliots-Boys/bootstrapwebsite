@@ -10,7 +10,7 @@
         <li class="nav-item"> <a class="nav-link active" aria-current="page" href="store.html">Store</a></li>
       </ul>
 </div>
-  </nav><main class="page-content py-4"><section class="card"><div class="card-body"><h1 class="h3">Order confirmation</h1><p>We cannot verify an order for this page yet.</p><p>If you have submitted the form, please keep your Jotform confirmation. Your order details will be available here once submission verification is connected.</p><a href="store.html" class="btn btn-primary">Return to the store</a></div></section></main><footer>
+  </nav><main class="page-content py-4"><section class="card"><div class="card-body"><h1 class="h3">Order confirmation</h1><p id="order-status" role="status">Checking your order…</p><div id="order-details" hidden><h2 class="h5">Order request received</h2><dl id="order-fields"></dl><p>Prices, availability and delivery charges will be confirmed before payment is requested.</p><button type="button" id="print-order" class="btn btn-outline-dark">Print order details</button></div><button id="retry-order" type="button" class="btn btn-outline-primary">Check again</button> <a href="store.html" class="btn btn-primary">Return to the store</a></div></section></main><footer>
       <div class="row">
         <div class="col-xxl-6"><br><img src="images/logo.png" alt="" width="228" height="76" class="img-fluid"/><p>17 High Street, Plymouth, NH 03264<br>603-535-2200</p></div>
         <div class="col-xxl-6"><h4>Reach Us</h4><table class="social-links" border="0" cellspacing="10" cellpadding="0">
@@ -25,4 +25,20 @@
 </table>
 </div>
       </div>
-    </footer></div></div></body></html>
+    </footer></div></div><script>(() => {
+const status=document.getElementById('order-status'),details=document.getElementById('order-details'),fields=document.getElementById('order-fields'),retry=document.getElementById('retry-order');
+let access;try{access=JSON.parse(sessionStorage.getItem('museum-order-access'));}catch{}
+async function check(){
+details.hidden=true;retry.disabled=true;
+if(!access||!/^[a-f0-9]{64}$/.test(access.token)||Date.now()-access.created>7*86400000){status.textContent='No order access is available in this tab. Start from your basket and complete the order form.';retry.hidden=true;return;}
+status.textContent='Checking your completed order…';
+try{
+const response=await fetch('/api/order-confirmation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:access.token})});const order=await response.json();
+if(!response.ok)throw new Error(order.error||'Could not verify your order.');
+fields.replaceChildren();
+for(const [label,value] of [['Order reference',order.reference],['Submitted',order.date],['Name',order.name],['Your order',order.summary],['Delivery or collection',order.delivery],['Order notes',order.notes]]){if(!value)continue;const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;dd.style.whiteSpace='pre-wrap';fields.append(dt,dd);}
+details.hidden=false;status.textContent='Your order request has been submitted. This is not a payment receipt.';
+}catch(error){status.textContent=error.message;}finally{retry.disabled=false;}
+}
+retry.addEventListener('click',check);document.getElementById('print-order').addEventListener('click',()=>window.print());check();
+})();</script></body></html>
