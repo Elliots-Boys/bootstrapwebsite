@@ -56,5 +56,14 @@ el('basket-items').addEventListener('change',event=>{
 });
 el('clear-basket').addEventListener('click',()=>{basket={};save('Basket cleared.');});
 el('copy-order').addEventListener('click',async()=>{try {await navigator.clipboard.writeText(el('order-summary').value);el('basket-status').textContent='Order summary copied.';}catch {el('order-summary').focus();el('order-summary').select();el('basket-status').textContent='Select and copy the order summary above.';}});
+el('checkout-link').addEventListener('click',event=>{
+ event.preventDefault();if(!Object.keys(basket).length)return;
+ try {
+ const token=Array.from(crypto.getRandomValues(new Uint8Array(32)),b=>b.toString(16).padStart(2,'0')).join('');
+ sessionStorage.setItem('museum-order-access',JSON.stringify({token,created:Date.now()}));
+ const url=new URL(el('checkout-link').href);url.searchParams.set('orderAccess',token);
+ location.assign(url.toString());
+ }catch{el('basket-status').textContent='Allow browser storage in this tab to continue securely.';}
+});
 render();
 })();</script></body></html>
