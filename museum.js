@@ -1,5 +1,6 @@
 (() => {
 'use strict';
+const recovering=location.hash.includes('type=recovery');
 const db=window.supabase.createClient('https://yeoometreeoasodcjujl.supabase.co','sb_publishable_66Jfz-RApo341qkmkuR7gA_7zpxXBLA');
 const $=id=>document.getElementById(id),esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=n=>n==null?'Price to be confirmed':new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n/100);
@@ -15,7 +16,7 @@ const signLink='<a href="account.html">Sign in</a>';
 async function account(){
 await current();$('auth-area').hidden=!!user;$('signed-in').hidden=!user;
 if(user){$('account-email').textContent='Signed in as '+user.email;const p=await result(db.from('profiles').select('full_name').eq('user_id',user.id).maybeSingle());$('profile-name').value=p?.full_name||user.user_metadata?.full_name||'';}
-if(location.hash.includes('type=recovery'))$('password-area').hidden=false;
+if(recovering)$('password-area').hidden=false;
 db.auth.onAuthStateChange(event=>{if(event==='PASSWORD_RECOVERY')$('password-area').hidden=false;});
 handle('login-form',async()=>{await result(db.auth.signInWithPassword({email:$('login-email').value,password:$('login-password').value}));location.assign('account.html');});
 handle('signup-form',async()=>{await result(db.auth.signUp({email:$('signup-email').value,password:$('signup-password').value,options:{data:{full_name:$('signup-name').value},emailRedirectTo:location.origin+'/account.html'}}));message('Check your email to confirm your account, then sign in.');});
