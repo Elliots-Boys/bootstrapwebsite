@@ -7,8 +7,8 @@
         <li class="nav-item"> <a class="nav-link" href="exhibition.html">Exhibition</a> </li>
         <li class="nav-item"> <a class="nav-link" href="collections.html">Collections</a></li>
         <li class="nav-item"> <a class="nav-link" href="membership.html">Membership</a></li>
-        <li class="nav-item"> <a class="nav-link active" aria-current="page" href="store.html">Store</a></li>
-      </ul>
+        <li class="nav-item"> <a class="nav-link" href="store.html">Store</a></li>
+      <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">My museum</a><ul class="dropdown-menu"><li><a class="dropdown-item" href="account.html">Account</a></li><li><a class="dropdown-item" href="my-orders.html">My orders</a></li><li><a class="dropdown-item" href="my-membership.html">My membership</a></li><li><a class="dropdown-item" href="bookings.html">Exhibition bookings</a></li><li><a class="dropdown-item" href="wishlist.html">Wishlist</a></li><li><a class="dropdown-item" href="admin.html">Admin dashboard</a></li></ul></li></ul>
 </div>
   </nav><main class="page-content py-4"><section class="card"><div class="card-body"><h1 class="h3">Order confirmation</h1><p id="order-status" role="status">Checking your order…</p><div id="order-details" hidden><h2 class="h5">Order request received</h2><dl id="order-fields"></dl><p>Prices, availability and delivery charges will be confirmed before payment is requested.</p><button type="button" id="print-order" class="btn btn-outline-dark">Print order details</button></div><button id="retry-order" type="button" class="btn btn-outline-primary">Check again</button> <a href="store.html" class="btn btn-primary">Return to the store</a></div></section></main><footer>
       <div class="row">
@@ -37,8 +37,8 @@ const response=await fetch('/api/order-confirmation',{method:'POST',headers:{'Co
 if(!response.ok)throw new Error(order.error||'Could not verify your order.');
 fields.replaceChildren();
 for(const [label,value] of [['Order reference',order.reference],['Submitted',order.date],['Name',order.name],['Your order',order.summary],['Delivery or collection',order.delivery],['Order notes',order.notes]]){if(!value)continue;const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;dd.style.whiteSpace='pre-wrap';fields.append(dt,dd);}
-details.hidden=false;status.textContent='Your order request has been submitted. This is not a payment receipt.';
+details.hidden=false;window.dispatchEvent(new CustomEvent('museum-order-verified'));status.textContent='Your order request has been submitted. This is not a payment receipt.';
 }catch(error){status.textContent=error.message;}finally{retry.disabled=false;}
 }
 retry.addEventListener('click',check);document.getElementById('print-order').addEventListener('click',()=>window.print());check();
-})();</script></body></html>
+})();</script><script src="supabase-vendor.js"></script><script src="museum.js"></script></body></html>
