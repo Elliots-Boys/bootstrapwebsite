@@ -20,7 +20,7 @@ const order=await verified.json();if(!verified.ok)return reply({error:order.erro
 const admin=createClient(url,Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,{auth:{persistSession:false}});
 const {data:existing}=await admin.from('orders').select('user_id').eq('jotform_submission_id',order.reference).maybeSingle();
 if(existing&&existing.user_id!==user.id)return reply({error:'Order is already linked to another account.'},403);
-if(!existing){const {error:saveError}=await admin.from('orders').insert({user_id:user.id,jotform_submission_id:order.reference,summary:order.summary,delivery:order.delivery});if(saveError&&saveError.code!=='23505')throw saveError;}
+if(!existing){const {error:saveError}=await admin.rpc('museum_finalize_order',{owner_id:user.id,checkout_hash:hash,submission_id:order.reference,order_summary:order.summary,delivery_method:order.delivery});if(saveError)return reply({error:saveError.message||'Unable to finalise stock for this order.'},409);}
 return reply({success:true});
 }catch{return reply({error:'Unable to save the order. Please try again.'},503);}
 });

@@ -1,0 +1,45 @@
+begin;
+insert into auth.users(id,email,email_confirmed_at) values('10000000-0000-4000-8000-000000000001','museum-test1@example.invalid',now()),('10000000-0000-4000-8000-000000000002','museum-test2@example.invalid',now());
+insert into public.products(id,name,category,image_path,stock,active) values('museum-test','Test product','Test','test.png',3,true);
+insert into public.exhibitions(id,title,image_path,capacity,active) values('museum-test','Test event','test.png',1,true);
+insert into public.checkout_sessions(token_hash,user_id) values(repeat('a',64),'10000000-0000-4000-8000-000000000001'),(repeat('b',64),'10000000-0000-4000-8000-000000000002');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select public.museum_action('reserve',jsonb_build_object('token_hash',repeat('a',64),'items','{"museum-test":2}'::jsonb));
+insert into public.saved_baskets(user_id,items) values(auth.uid(),'{"museum-test":2}');
+insert into public.reviews(product_id,rating,body) values('museum-test',5,'Test review text');
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
+do $$begin
+if exists(select 1 from public.saved_baskets) then raise exception 'basket RLS failed';end if;
+if exists(select 1 from public.reviews where product_id='museum-test') then raise exception 'moderation RLS failed';end if;
+begin perform public.museum_action('reserve',jsonb_build_object('token_hash',repeat('b',64),'items','{"museum-test":2}'::jsonb));raise exception 'oversell allowed';exception when raise_exception then if sqlerrm='oversell allowed' then raise;end if;end;
+begin perform public.museum_action('check_ticket',jsonb_build_object('token',gen_random_uuid()));raise exception 'staff action allowed';exception when raise_exception then if sqlerrm='staff action allowed' then raise;end if;end;
+if has_column_privilege('authenticated','public.notifications','body','UPDATE') then raise exception 'notification content editable';end if;
+if has_function_privilege('authenticated','public.museum_finalize_order(uuid,text,text,text,text)','EXECUTE') then raise exception 'finalize exposed';end if;
+end $$;
+reset role;
+select public.museum_finalize_order('10000000-0000-4000-8000-000000000001',repeat('a',64),'museum-test-submit','Tampered quantity 99','Collection');
+select public.museum_finalize_order('10000000-0000-4000-8000-000000000001',repeat('a',64),'museum-test-submit','Tampered quantity 99','Collection');
+do $$begin
+if (select stock from public.products where id='museum-test')<>1 then raise exception 'stock finalization failed';end if;
+if not exists(select 1 from public.orders where jotform_submission_id='museum-test-submit' and summary='Test product × 2' and stock_processed) then raise exception 'canonical order failed';end if;
+if (select count(*) from public.notifications where user_id='10000000-0000-4000-8000-000000000001')<>1 then raise exception 'notification failed';end if;
+end $$;
+insert into public.bookings(user_id,exhibition_id,quantity,status) values('10000000-0000-4000-8000-000000000001','museum-test',1,'confirmed');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000002',true);
+select public.museum_action('join_waitlist','{"exhibition_id":"museum-test","quantity":1}');
+reset role;
+update public.bookings set status='cancelled' where exhibition_id='museum-test';
+insert into museum_private.admins(user_id) values('10000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-4000-8000-000000000001',true);
+select public.museum_action('promote_waitlist',jsonb_build_object('id',(select id from public.waitlist where exhibition_id='museum-test')));
+select public.museum_action('check_ticket',jsonb_build_object('token',(select ticket_token from public.bookings where exhibition_id='museum-test' and status='confirmed')));
+do $$declare r jsonb;begin
+select public.museum_action('check_ticket',jsonb_build_object('token',(select ticket_token from public.bookings where exhibition_id='museum-test' and status='confirmed'))) into r;
+if not (r->>'already_used')::boolean then raise exception 'duplicate ticket accepted';end if;
+end $$;
+reset role;
+select 'PASS: reservations, idempotent canonical order, RLS, reviews, notifications, waiting list, admin and duplicate QR checks' as verification;
+rollback;

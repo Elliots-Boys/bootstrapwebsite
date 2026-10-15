@@ -51,3 +51,7 @@ footer { padding: 16px; margin-top: 24px; }
 .admin-row { padding:16px 0; border-bottom:1px solid #ddd; }
 .admin-row input,.admin-row select { max-width:100%; }
 .navbar .dropdown-menu { z-index:1100; }
+
+
+.museum-qr img {max-width:100%;height:auto;} .museum-qr {background:white;padding:16px;display:inline-block;} .museum-code {overflow-wrap:anywhere;font-size:.8rem;} .museum-unread {border-left:5px solid #0d6efd;} #qr-video {max-height:380px;background:#111;}
+@media print{nav,footer,button,#museum-message {display:none !important;} .container{background:white !important;} }
